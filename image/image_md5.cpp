@@ -1,7 +1,7 @@
 /**************************************************************************
  *
  * Copyright (C) 2013 Intel Corporation. All rights reversed.
- * Author: Shuang He <shuang.he@intel.com>
+ * Author: Meng Mengmeng <mengmeng.meng@intel.com>
  * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,42 +25,42 @@
  **************************************************************************/
 
 
-#include <assert.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdio.h>
-
 #include <fstream>
-
 #include "image.hpp"
 
+extern "C" {
+    #include "md5.h"
+}
 
+
+using namespace std;
 namespace image {
 
 
 void
-Image::writeRAW(std::ostream &os) const
-{
-    assert(channelType == TYPE_UNORM8);
-
+Image::writeMD5(std::ostream &os) const {
+    struct MD5Context md5c;
+    MD5Init(&md5c);
     const unsigned char *row;
-
+    unsigned len = width*bytesPerPixel;
     for (row = start(); row != end(); row += stride()) {
-        os.write((const char *)row, width*bytesPerPixel);
+        MD5Update(&md5c, (unsigned char *)row, len);
     }
-}
+    unsigned char signature[16];
+    MD5Final(signature, &md5c);
 
-
-bool
-Image::writeRAW(const char *filename) const
-{
-    std::ofstream os(filename, std::ofstream::binary);
-    if (!os) {
-        return false;
+    const char hex[] = "0123456789ABCDEF";
+    char csig[33];
+    for(int i = 0; i < sizeof signature; i++){
+        csig[2*i    ] = hex[signature[i] >> 4];
+        csig[2*i + 1] = hex[signature[i] & 0xf];
     }
-    writeRAW(os);
-    return true;
+    csig[33] = '\0';
+
+    os << csig;
+    os << "\n";
 }
 
 
 } /* namespace image */
+

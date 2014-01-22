@@ -50,7 +50,8 @@ static bool loopOnFinish = false;
 static const char *snapshotPrefix = NULL;
 static enum {
     PNM_FMT,
-    RAW_RGB
+    RAW_RGB,
+    RAW_MD5
 } snapshotFormat = PNM_FMT;
 
 static trace::CallSet snapshotFrequency;
@@ -121,10 +122,20 @@ takeSnapshot(unsigned call_no) {
             char comment[21];
             snprintf(comment, sizeof comment, "%u",
                      useCallNos ? call_no : snapshot_no);
-            if (snapshotFormat == RAW_RGB)
-                src->writeRAW(std::cout);
-            else
+            switch (snapshotFormat) {
+            case PNM_FMT:
                 src->writePNM(std::cout, comment);
+                break;
+            case RAW_RGB:
+                src->writeRAW(std::cout);
+                break;
+            case RAW_MD5:
+                src->writeMD5(std::cout);
+                break;
+            default:
+                assert(0);
+                break;
+            }
         } else {
             os::String filename = os::String::format("%s%010u.png",
                                                      snapshotPrefix,
@@ -562,7 +573,7 @@ usage(const char *argv0) {
         "      --driver=DRIVER     force driver type (`hw`, `sw`, `ref`, `null`, or driver module name)\n"
         "      --sb                use a single buffer visual\n"
         "  -s, --snapshot-prefix=PREFIX    take snapshots; `-` for PNM stdout output\n"
-        "      --snapshot-format=FMT       use (PNM or RGB; default is PNM) when writing to stdout output\n"
+        "      --snapshot-format=FMT       use (PNM, RGB, or MD5; default is PNM) when writing to stdout output\n"
         "  -S, --snapshot=CALLSET  calls to snapshot (default is every frame)\n"
         "  -v, --verbose           increase output verbosity\n"
         "  -D, --dump-state=CALL   dump state at specific call no\n"
@@ -704,9 +715,11 @@ int main(int argc, char **argv)
                 }
             }
             break;
-	case SNAPSHOT_FORMAT_OPT:
+        case SNAPSHOT_FORMAT_OPT:
             if (strcmp(optarg, "RGB") == 0)
                 snapshotFormat = RAW_RGB;
+            else if (strcmp(optarg, "MD5") == 0)
+                snapshotFormat = RAW_MD5;
             else
                 snapshotFormat = PNM_FMT;
             break;
